@@ -1,7 +1,8 @@
 'use strict'
 
+const fs = require('fs')
 const fp = require('fastify-plugin')
-const readFile = require('fs').readFile
+const readFile = fs.readFile
 const resolve = require('path').resolve
 const join = require('path').join
 const HLRU = require('hashlru')
@@ -92,7 +93,19 @@ function fastifyView (fastify, opts, next) {
       return
     }
 
-    readFile(join(templatesDir, page), 'utf8', readCallback(this, page, data))
+    // FIXED: 2018-08-02, Euiyeon Kim <ppang327@gmail.com>
+    // ERROR: Promise may not be fulfilled with 'undefined' when statusCode is not 204
+    // readFile(join(templatesDir, page), 'utf8', readCallback(this, page, data))
+    let html
+    try {
+      html = fs.readFileSync(join(templatesDir, page), 'utf8')
+    } catch (err) {
+      this.send(err)
+      return
+    }
+
+    const callback = readCallback(this, page, data)
+    callback(null, html)
   }
 
   function viewEjsMate (page, data) {
